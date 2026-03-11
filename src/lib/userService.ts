@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { requireDb } from './firebase';
 import {
     collection,
     doc,
@@ -18,6 +18,7 @@ export const userService = {
      * Obtener todos los usuarios
      */
     async getAllUsers(): Promise<UserProfile[]> {
+        const db = requireDb();
         const querySnapshot = await getDocs(collection(db, 'users'));
         return querySnapshot.docs.map(doc => doc.data() as UserProfile);
     },
@@ -26,6 +27,7 @@ export const userService = {
      * Obtener un usuario específico
      */
     async getUser(uid: string): Promise<UserProfile | null> {
+        const db = requireDb();
         if (!uid) return null;
         const docRef = doc(db, 'users', uid);
         const docSnap = await getDoc(docRef);
@@ -36,6 +38,7 @@ export const userService = {
      * Suscripción en tiempo real a usuarios
      */
     subscribeToUsers(callback: (users: UserProfile[]) => void) {
+        const db = requireDb();
         return onSnapshot(collection(db, 'users'), (snapshot) => {
             const users = snapshot.docs.map(doc => doc.data() as UserProfile);
             callback(users);
@@ -46,6 +49,7 @@ export const userService = {
      * Actualizar perfil de usuario
      */
     async updateUser(uid: string, updates: Partial<UserProfile>): Promise<void> {
+        const db = requireDb();
         const userDocRef = doc(db, 'users', uid);
         await updateDoc(userDocRef, {
             ...updates,
@@ -57,6 +61,7 @@ export const userService = {
      * Crear perfil de usuario manualmente
      */
     async createUserProfile(profile: UserProfile): Promise<void> {
+        const db = requireDb();
         const userDocRef = doc(db, 'users', profile.uid);
         await setDoc(userDocRef, {
             ...profile,
@@ -69,6 +74,7 @@ export const userService = {
      * Eliminar usuario
      */
     async deleteUser(uid: string): Promise<void> {
+        const db = requireDb();
         const userDocRef = doc(db, 'users', uid);
         await deleteDoc(userDocRef);
     },
@@ -77,6 +83,7 @@ export const userService = {
      * Asignar múltiples proyectos a un usuario con sincronización bidireccional atómica
      */
     async updateProjectAssignments(uid: string, projectIds: string[]): Promise<void> {
+        const db = requireDb();
         const user = await this.getUser(uid);
         if (!user) return;
 

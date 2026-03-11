@@ -11,7 +11,7 @@ import {
     serverTimestamp,
     updateDoc
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { requireDb } from './firebase';
 import { Document, DocumentType, UserRole } from '../types/contractual';
 
 const COLLECTION_NAME = 'documents';
@@ -22,6 +22,7 @@ export const documentService = {
      */
     subscribeToProjectDocuments(projectId: string, callback: (docs: Document[]) => void) {
         if (!projectId) return () => { };
+        const db = requireDb();
 
         const q = query(
             collection(db, COLLECTION_NAME),
@@ -46,6 +47,7 @@ export const documentService = {
      * Suscribirse a todos los documentos (Admin / Auditoría)
      */
     subscribeToAllDocuments(callback: (docs: Document[]) => void) {
+        const db = requireDb();
         const q = query(
             collection(db, COLLECTION_NAME),
             orderBy('createdAt', 'desc')
@@ -77,6 +79,7 @@ export const documentService = {
         mimeType: string;
         author: string;
     }): Promise<string> {
+        const db = requireDb();
         const docRef = doc(collection(db, COLLECTION_NAME));
         const newDoc: Partial<Document> = {
             id: docRef.id,
@@ -108,6 +111,7 @@ export const documentService = {
      * Actualizar URL y Status después de subida existosa a Storage
      */
     async finalizeUpload(docId: string, url: string, storagePath: string): Promise<void> {
+        const db = requireDb();
         const docRef = doc(db, COLLECTION_NAME, docId);
         await updateDoc(docRef, {
             url,
@@ -117,6 +121,7 @@ export const documentService = {
     },
 
     async deleteDocument(docId: string): Promise<void> {
+        const db = requireDb();
         await deleteDoc(doc(db, COLLECTION_NAME, docId));
     }
 };

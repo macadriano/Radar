@@ -15,7 +15,7 @@ import {
     arrayRemove,
     serverTimestamp
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { requireDb } from './firebase';
 import { Project, ProjectStatus, UserProfile, TeamMember, TeamMemberRole } from '../types/contractual';
 
 const COLLECTION_NAME = 'projects';
@@ -25,11 +25,13 @@ export const projectService = {
      * Obtener todos los proyectos (Admin)
      */
     async getAllProjects(): Promise<Project[]> {
+        const db = requireDb();
         const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
     },
 
     async getProjectsByLeader(leaderUid: string): Promise<Project[]> {
+        const db = requireDb();
         const q = query(collection(db, COLLECTION_NAME), where('leaderUid', '==', leaderUid));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
@@ -39,6 +41,7 @@ export const projectService = {
      * Suscripción en tiempo real con filtrado por rol y membresía de equipo
      */
     subscribeToProjects(callback: (projects: Project[]) => void, role?: string, uid?: string) {
+        const db = requireDb();
         // Por defecto, consulta amplia (Admin ve todo)
         let q = query(collection(db, COLLECTION_NAME), orderBy('name'));
 
@@ -64,6 +67,7 @@ export const projectService = {
      * Crear un nuevo proyecto con equipo inicial
      */
     async createProject(project: Omit<Project, 'id'>): Promise<string> {
+        const db = requireDb();
         const docRef = await addDoc(collection(db, COLLECTION_NAME), {
             ...project,
             team: project.team || []
@@ -79,11 +83,13 @@ export const projectService = {
     },
 
     async updateProject(id: string, updates: Partial<Project>): Promise<void> {
+        const db = requireDb();
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, updates);
     },
 
     async getProject(id: string): Promise<Project | null> {
+        const db = requireDb();
         if (!id) return null;
         try {
             const docRef = doc(db, COLLECTION_NAME, id);
@@ -101,6 +107,7 @@ export const projectService = {
      * GESTIÓN DE EQUIPO: Agregar miembro
      */
     async addTeamMember(projectId: string, member: TeamMember): Promise<void> {
+        const db = requireDb();
         const batch = writeBatch(db);
         const { userService } = require('./userService');
 
@@ -130,6 +137,7 @@ export const projectService = {
      * GESTIÓN DE EQUIPO: Quitar miembro
      */
     async removeTeamMember(projectId: string, memberUid: string): Promise<void> {
+        const db = requireDb();
         const project = await this.getProject(projectId);
         if (!project) return;
 
@@ -168,6 +176,7 @@ export const projectService = {
      * GESTIÓN DE EQUIPO: Actualizar rol
      */
     async updateMemberRole(projectId: string, memberUid: string, newRole: TeamMemberRole): Promise<void> {
+        const db = requireDb();
         const project = await this.getProject(projectId);
         if (!project) return;
 
@@ -186,6 +195,7 @@ export const projectService = {
      * Asignar líder (fuente de verdad principal)
      */
     async assignLeader(projectId: string, leaderUid: string, previousLeaderUid?: string): Promise<void> {
+        const db = requireDb();
         const batch = writeBatch(db);
         const { userService } = require('./userService');
 

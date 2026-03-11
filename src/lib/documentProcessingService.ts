@@ -9,7 +9,7 @@ import {
     DocumentType,
     UserRole
 } from '../types/contractual';
-import { db, storage } from './firebase';
+import { requireDb, requireStorage } from './firebase';
 import {
     collection,
     doc,
@@ -57,6 +57,7 @@ export const documentProcessingService = {
         uploadedByUid: string = 'unknown',
         uploadedByRole: UserRole = 'LIDER_PROYECTO'
     ): Promise<string> {
+        const db = requireDb();
         if (!this.isValidFileType(file)) {
             throw new Error('Formato no permitido. Solo se aceptan PDF, Word o Excel.');
         }
@@ -89,6 +90,7 @@ export const documentProcessingService = {
      * Pipeline de Background: Storage -> Extracción -> Análisis
      */
     async executeBackgroundPipeline(docId: string, projectId: string, file: File, useAI: boolean) {
+        const storage = requireStorage();
         let downloadUrl = '';
         let storagePath = `projects/${projectId}/documents/${Date.now()}_${file.name}`;
 
@@ -111,6 +113,7 @@ export const documentProcessingService = {
     },
 
     async processDocumentPipeline(docId: string, projectId: string, file: File, useAI: boolean) {
+        const db = requireDb();
         const docRef = doc(db, 'documents', docId);
         await updateDoc(docRef, { status: 'PROCESSING' });
 
@@ -156,6 +159,7 @@ export const documentProcessingService = {
     },
 
     async convertFindingsToRisks(findings: { activities: CriticalActivity[], incidents: Incident[] }, projectId: string, docId: string): Promise<string[]> {
+        const db = requireDb();
         const riskIds: string[] = [];
         for (const act of findings.activities) {
             const risk = analyzeActivityRisk(act, 1);

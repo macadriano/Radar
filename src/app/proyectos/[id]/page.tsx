@@ -51,7 +51,7 @@ import {
     UserProfile,
     Priority
 } from '@/types/contractual';
-import { db } from '@/lib/firebase';
+import { requireDb } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -86,6 +86,7 @@ export default function DetalleProyecto() {
 
     useEffect(() => {
         if (!id || typeof id !== 'string') return;
+        const db = requireDb();
 
         // Subscribe to Project
         const unsubProject = onSnapshot(query(collection(db, 'projects'), where('__name__', '==', id)), (snapshot) => {

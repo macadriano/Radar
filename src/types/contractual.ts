@@ -9,7 +9,7 @@ export type TimeHorizon = '0-7' | '8-15' | '16-30' | '31-60' | '61-90' | '90+';
 
 export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'CONTROL_PROYECTOS' | 'LIDER_PROYECTO' | 'COLABORADOR' | 'CLIENTE_LECTOR';
 
-export type ProjectStatus = 'BORRADOR' | 'EN_EJECUCION' | 'CERRADO';
+export type ProjectStatus = 'BORRADOR' | 'EN_PLANIFICACION' | 'EN_EJECUCION' | 'CERRADO';
 export type UserStatus = 'ACTIVE' | 'PENDING' | 'DISABLED';
 
 export interface UnidadNegocio {
@@ -35,6 +35,8 @@ export interface TeamMember {
     displayName?: string;
     email?: string;
 }
+
+export type TeamMemberRole = 'LIDER' | 'RESPONSABLE' | 'COLABORADOR' | 'VISOR' | 'LECTOR';
 
 export interface UserProfile {
     uid: string;
@@ -69,10 +71,125 @@ export interface Proyecto {
     config: ProjectConfig;
 }
 
+// Alias para compatibilidad: varias pantallas importan `Project`
+export type Project = Proyecto;
+
+export interface Document {
+    id: string;
+    projectId: string;
+    name: string;
+    type: DocumentType;
+    author: string;
+
+    // Archivo
+    fileName?: string;
+    mimeType?: string;
+    url?: string;
+    storagePath?: string;
+
+    // Fechas
+    uploadDate?: string;
+    createdAt?: any; // Firestore Timestamp o string (se normaliza en services)
+    processedDate?: string;
+
+    // Estado del pipeline
+    status: ProcessingStatus;
+    analysisStatus?: ProcessingStatus;
+
+    // Trazabilidad
+    uploadedByUid?: string;
+    uploadedByRole?: UserRole;
+    version?: string;
+
+    // Métricas de extracción/análisis
+    counts?: { activities: number; incidents: number; risks: number };
+    findingsCount?: { activities: number; incidents: number; risks: number };
+    extractedText?: string;
+}
+
+export interface CriticalActivity {
+    activityId: string;
+    projectId: string;
+    name: string;
+    plannedStart: string;
+    plannedEnd: string;
+    percentComplete: number;
+    criticalityBase: number; // 1-5
+    milestoneId?: string;
+    linkedClauseIds: string[];
+    hasPenalty: boolean;
+    penaltyWeight: number; // 1-5
+}
+
+export type IncidentCategory =
+    | 'técnico'
+    | 'suministro'
+    | 'cliente'
+    | 'permisos'
+    | 'QAQC'
+    | 'HSE'
+    | 'legal'
+    | string;
+
+export interface Incident {
+    incidentId: string;
+    projectId: string;
+    category: IncidentCategory;
+    date: string;
+
+    documentId: string;
+    documentVersionId?: string;
+    excerpt: string;
+
+    linkedActivityId?: string;
+    linkedClauseId?: string;
+    daysImpactEstimate?: number;
+    costImpactEstimate?: number;
+}
+
 export interface ProjectConfig {
     weightTimeline: number;
     weightCost: number;
     clauseTypeWeights: Record<string, number>;
+}
+
+export interface Milestone {
+    id?: string;
+    projectId?: string;
+    name: string;
+    dueDate: string;
+    isCriticalPath: boolean;
+    completed?: boolean;
+}
+
+export interface ContractClause {
+    id?: string;
+    projectId?: string;
+    clauseNumber?: string;
+    title: string;
+    type: 'Penalty' | 'Critical Milestone' | 'Obligation' | 'General' | string;
+    content?: string;
+    description?: string;
+    penaltyExposure: number;
+    dueDate?: string;
+    linkedMilestoneId?: string;
+}
+
+export interface ScoreBreakdown {
+    initialScore: number;
+    totalDeductions: number;
+    finalScore: number;
+    deductions: Array<{
+        riskId: string;
+        description: string;
+        points: number;
+        penaltyImpact: number;
+    }>;
+    corporateImpact: {
+        totalEconomicRisk: number;
+        totalDaysDelay: number;
+        globalTGIStatus: 'Stable' | 'Warning' | 'Critical';
+    };
 }
 
 export interface Obligacion {
@@ -94,7 +211,19 @@ export interface Risk {
     projectId: string;
     obligacionId?: string; // Link a Obligacion
     description: string;
-    categoria: string; // TECNICO | SUMINISTRO | CLIENTE | HSE
+    categoria?: string; // TECNICO | SUMINISTRO | CLIENTE | HSE
+
+    // Campos usados por UI (riesgos originados por actividad/incidente, etc.)
+    originType?: 'ACTIVITY' | 'INCIDENT' | 'DOCUMENT' | 'OTHER' | string;
+    activityId?: string;
+    clauseId?: string;
+    timeHorizon?: TimeHorizon;
+    evidence?: {
+        documentId: string;
+        documentVersionId?: string;
+        date?: string;
+        excerpt?: string;
+    };
 
     // Escalas 1-5
     probability: number;

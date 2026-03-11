@@ -22,6 +22,11 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError('');
+        if (!auth) {
+            setError('Firebase no está configurado correctamente en este entorno.');
+            setLoading(false);
+            return;
+        }
         try {
             await signInWithEmailAndPassword(auth, email, password);
             router.push('/');
@@ -34,6 +39,11 @@ export default function LoginPage() {
     const handleGoogleLogin = async () => {
         setLoading(true);
         const provider = new GoogleAuthProvider();
+        if (!auth) {
+            setError('Firebase no está configurado correctamente en este entorno.');
+            setLoading(false);
+            return;
+        }
         try {
             await signInWithPopup(auth, provider);
             router.push('/');

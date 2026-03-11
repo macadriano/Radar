@@ -26,6 +26,12 @@ export default function RegisterPage() {
         setLoading(true);
         setError('');
 
+        if (!auth || !db) {
+            setError('Firebase no está configurado correctamente en este entorno.');
+            setLoading(false);
+            return;
+        }
+
         try {
             // 1. Create Auth User
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);

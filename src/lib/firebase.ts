@@ -29,3 +29,20 @@ if (hasValidConfig) {
 }
 
 export { app, auth, db, storage };
+
+export function requireAuth(): Auth {
+    if (!auth) throw new Error("Firebase Auth no configurado.");
+    return auth;
+}
+
+export function requireDb(): Firestore {
+    if (!db) throw new Error("Firebase Firestore no configurado.");
+    return db;
+}
+
+export function requireStorage(): FirebaseStorage {
+    if (!storage) throw new Error("Firebase Storage no configurado.");
+    return storage;
+}
+
+export const firebaseConfigured = hasValidConfig;

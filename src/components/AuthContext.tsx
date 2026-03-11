@@ -40,14 +40,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(false);
             return;
         }
+        const authInstance = auth;
+        const dbInstance = db;
 
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(authInstance, async (firebaseUser) => {
             setLoading(true);
             if (firebaseUser) {
                 setUser(firebaseUser);
 
                 const fetchOrCreateProfile = async (retryCount = 0): Promise<void> => {
-                    const userDocRef = doc(db, 'users', firebaseUser.uid);
+                    const userDocRef = doc(dbInstance, 'users', firebaseUser.uid);
                     try {
                         const userDoc = await getDoc(userDocRef);
 
