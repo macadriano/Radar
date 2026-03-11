@@ -1,0 +1,281 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  CONTROL_PROYECTOS
+  LIDER_PROYECTO
+  COLABORADOR
+  CLIENTE_LECTOR
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  DISABLED
+}
+
+enum ProjectStatus {
+  BORRADOR
+  EN_EJECUCION
+  CERRADO
+}
+
+enum DocumentType {
+  CONTRATO
+  ALCANCE
+  INFORME
+  ACTA
+  OTRO
+}
+
+enum FindingType {
+  PARTE
+  CLAUSULA
+  MONTO
+  FECHA
+  PLAZO
+  HITO
+  PENALIDAD
+  ENTREGABLE
+  RIESGO
+  OTRO
+}
+
+model Usuario {
+  id                String            @id @default(uuid())
+  nombre            String
+  email             String            @unique
+  rol               UserRole          @default(LIDER_PROYECTO)
+  estado            UserStatus        @default(PENDING)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  proyectosCreados  Proyecto[]        @relation("CreadorProyecto")
+  asignaciones      ProyectoUsuario[]
+  documentosSubidos Documento[]
+  comentarios       ComentarioHallazgo[]
+  accionesMitigacion AccionMitigacion[]
+  unidadLiderada    UnidadNegocio?    @relation("LiderUnidad")
+}
+
+model UnidadNegocio {
+  id             String     @id @default(uuid())
+  nombre         String
+  liderId        String     @unique
+  lider          Usuario    @relation("LiderUnidad", fields: [liderId], references: [id])
+  proyectos      Proyecto[]
+}
+
+model Cliente {
+  id             String     @id @default(uuid())
+  razonSocial    String
+  rucNit         String?
+  contactoNombre String?
+  contactoEmail  String?
+  proyectos      Proyecto[]
+}
+
+model Proyecto {
+  id                   String            @id @default(uuid())
+  codigo               String?           @unique
+  nombre               String
+  descripcion          String?           @db.Text
+  estado               ProjectStatus     @default(BORRADOR)
+  creadoPorId          String
+  creador              Usuario           @relation("CreadorProyecto", fields: [creadoPorId], references: [id])
+  clienteId            String?
+  cliente              Cliente?          @relation(fields: [clienteId], references: [id])
+  unidadId             String?
+  unidad               UnidadNegocio?    @relation(fields: [unidadId], references: [id])
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  amount               Float             @default(0)
+  currency             String            @default("USD")
+  startDate            DateTime?
+  estimatedEndDate     DateTime?
+  type                 String?
+  scopeDescription     String?           @db.Text
+  leaderUid            String?
+
+  usuarios             ProyectoUsuario[]
+  documentos           Documento[]
+  obligaciones         Obligacion[]
+  alertas              Alerta[]
+  riesgos              Riesgo[]
+  metricas             DashboardMetrica[]
+}
+
+model ProyectoUsuario {
+  id              String   @id @default(uuid())
+  proyectoId      String
+  proyecto        Proyecto @relation(fields: [proyectoId], references: [id])
+  usuarioId       String
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id])
+  rolEnProyecto   String   // RESPONSABLE | COLABORADOR | LECTOR
+  esResponsable   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@unique([proyectoId, usuarioId])
+}
+
+model Documento {
+  id                  String               @id @default(uuid())
+  proyectoId          String
+  proyecto            Proyecto             @relation(fields: [proyectoId], references: [id])
+  tipo                DocumentType
+  titulo              String
+  version             Int                  @default(1)
+  fechaDocumento      DateTime
+  archivoUrl          String
+  storagePath         String
+  hashArchivo         String
+  cargadoPorId        String
+  cargador            Usuario              @relation(fields: [cargadoPorId], references: [id])
+  estadoProcesamiento String               @default("PENDIENTE")
+  createdAt           DateTime             @default(now())
+
+  extracciones        Extraccion[]
+  obligaciones        Obligacion[]
+  evidencias          EvidenciaCumplimiento[]
+}
+
+model Extraccion {
+  id                String            @id @default(uuid())
+  documentoId       String
+  documento         Documento         @relation(fields: [documentoId], references: [id])
+  motor             String            // GPT | REGLAS | HIBRIDO
+  promptVersion     String
+  estado            String            // OK | WARNING | FAIL
+  resumen           String?           @db.Text
+  outputJsonPath    String
+  createdAt         DateTime          @default(now())
+
+  entidades         EntidadExtraida[]
+  evidencias        EvidenciaCumplimiento[]
+}
+
+model EntidadExtraida {
+  id                String       @id @default(uuid())
+  extraccionId      String
+  extraccion        Extraccion   @relation(fields: [extraccionId], references: [id])
+  tipo              FindingType
+  label             String
+  valorTexto        String
+  valorNumero       Float?
+  valorFecha        DateTime?
+  confianza         Float
+  fuenteFragmento   String?      @db.Text
+}
+
+model Obligacion {
+  id                  String                  @id @default(uuid())
+  proyectoId          String
+  proyecto            Proyecto                @relation(fields: [proyectoId], references: [id])
+  origenDocumentoId   String
+  documento           Documento               @relation(fields: [origenDocumentoId], references: [id])
+  codigo              String
+  descripcion         String                  @db.Text
+  categoria           String                  // PLAZO | CALIDAD | PAGO | SEGURIDAD | DOC
+  severidad           String                  // BAJA | MEDIA | ALTA | CRITICA
+  fechaCompromiso     DateTime?
+  responsableId       String?
+  estado              String                  @default("PENDIENTE") // PENDIENTE | PROGRESO | CUMPLIDA | INCUMPLIDA
+  createdAt           DateTime                @default(now())
+
+  evidencias          EvidenciaCumplimiento[]
+  alertas             Alerta[]
+  riesgos             Riesgo[]
+}
+
+model Riesgo {
+  id                  String             @id @default(uuid())
+  proyectoId          String
+  proyecto            Proyecto           @relation(fields: [proyectoId], references: [id])
+  obligacionId        String?
+  obligacion          Obligacion?        @relation(fields: [obligacionId], references: [id])
+  descripcion         String             @db.Text
+  categoria           String             // TECNICO | SUMINISTRO | CLIENTE | HSE
+  probabilidad        Int                // 1-5
+  impactoCronograma   Int                // 1-5
+  impactoCosto        Int                // 1-5
+  exposicionPenalidad Int                // 1-5
+  severityScore       Float
+  status              String             @default("OPEN")
+  createdAt           DateTime           @default(now())
+
+  acciones            AccionMitigacion[]
+}
+
+model AccionMitigacion {
+  id                  String    @id @default(uuid())
+  riesgoId            String
+  riesgo              Riesgo    @relation(fields: [riesgoId], references: [id])
+  descripcion         String    @db.Text
+  fechaCompromiso     DateTime
+  responsableId       String
+  responsable         Usuario   @relation(fields: [responsableId], references: [id])
+  estado              String    @default("PENDIENTE") // PENDIENTE | PROGRESO | COMPLETADA
+  comentarioCierre    String?   @db.Text
+  createdAt           DateTime  @default(now())
+}
+
+model EvidenciaCumplimiento {
+  id              String      @id @default(uuid())
+  obligacionId    String
+  obligacion      Obligacion  @relation(fields: [obligacionId], references: [id])
+  documentoId     String
+  documento       Documento   @relation(fields: [documentoId], references: [id])
+  extraccionId    String?
+  extraccion      Extraccion? @relation(fields: [extraccionId], references: [id])
+  hallazgo        String      @db.Text
+  estadoEval      String      // SOPORTA | CONTRADICE | INSUFICIENTE
+  confianza       Float
+  createdAt       DateTime    @default(now())
+}
+
+model Alerta {
+  id              String      @id @default(uuid())
+  proyectoId      String
+  proyecto        Proyecto    @relation(fields: [proyectoId], references: [id])
+  obligacionId    String?
+  obligacion      Obligacion? @relation(fields: [obligacionId], references: [id])
+  tipo            String      // VENCIMIENTO | ATRASO | INCUMPLIMIENTO | RIESGO
+  nivel           String      // INFO | WARNING | CRITICO
+  mensaje         String
+  estado          String      @default("ABIERTA") // ABIERTA | GESTION | CERRADA
+  generadaPor     String      @default("SISTEMA")
+  createdAt       DateTime    @default(now())
+  cerradaAt       DateTime?
+}
+
+model ComentarioHallazgo {
+  id              String    @id @default(uuid())
+  entidadTipo     String    // RIESGO | DOCUMENTO | OBLIGACION
+  entidadId       String
+  usuarioId       String
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id])
+  texto           String    @db.Text
+  createdAt       DateTime  @default(now())
+}
+
+model DashboardMetrica {
+  id              String    @id @default(uuid())
+  proyectoId      String
+  proyecto        Proyecto  @relation(fields: [proyectoId], references: [id])
+  clave           String
+  valorNum        Float
+  valorText       String?
+  fechaCorte      DateTime
+  createdAt       DateTime  @default(now())
+}

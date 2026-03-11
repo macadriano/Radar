@@ -1,0 +1,35 @@
+{
+  "name": "radar-contractual",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:webpack": "next dev --turbopack false",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.4.2",
+    "chart.js": "^4.4.0",
+    "firebase": "^12.10.0",
+    "framer-motion": "^11.11.0",
+    "lucide-react": "^0.453.0",
+    "next": "^16.1.6",
+    "prisma": "^7.4.2",
+    "react": "^19.2.3",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "valibot": "^1.2.0"
+  }
+}
