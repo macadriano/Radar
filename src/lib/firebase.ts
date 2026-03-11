@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
-import { getFirestore, Firestore, enableNetwork } from "firebase/firestore";
+import { getFirestore, Firestore } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -13,18 +13,20 @@ const firebaseConfig = {
 };
 
 const hasValidConfig = typeof firebaseConfig.apiKey === "string" && firebaseConfig.apiKey.length > 0;
+const isBrowser = typeof window !== "undefined";
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
-if (hasValidConfig) {
+// Importante: inicializar Firebase SOLO en el navegador.
+// En server/build puede causar intentos de conexión a Firestore sin auth y demoras.
+if (hasValidConfig && isBrowser) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
-    enableNetwork(db).catch(() => {});
 }
 
 export { app, auth, db, storage };

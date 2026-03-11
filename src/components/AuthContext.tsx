@@ -43,11 +43,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         const authInstance = auth;
         const dbInstance = db;
+        let cancelled = false;
 
         const unsubscribe = onAuthStateChanged(authInstance, async (firebaseUser) => {
             setLoading(true);
             if (firebaseUser) {
                 setUser(firebaseUser);
+                // Prioridad: que la UI cargue rápido. El perfil se resuelve en background.
+                setLoading(false);
 
                 // Forzar conexión a red antes de leer perfil (evita "client is offline" en producción)
                 try {
@@ -68,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                                 profileData = { ...profileData, role: 'SUPERADMIN', status: 'ACTIVE' };
                             }
 
-                            setProfile(profileData);
+                            if (!cancelled) setProfile(profileData);
                         } else {
                             // Registration fallback or first-time login
                             const isSuperAdmin = firebaseUser.email === 'chbielich@tgi.pe' || firebaseUser.email?.endsWith('@tgi.com.co');
@@ -86,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                                 ...newProfile,
                                 createdAt: serverTimestamp()
                             });
-                            setProfile(newProfile);
+                            if (!cancelled) setProfile(newProfile);
                         }
                     } catch (error: unknown) {
                         const isOffline = error && typeof error === 'object' && 'message' in error &&
@@ -96,12 +99,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             return fetchOrCreateProfile(retryCount + 1);
                         }
                         console.error('Error fetching/creating user profile:', error);
-                    } finally {
-                        setLoading(false);
                     }
                 };
 
-                await fetchOrCreateProfile();
+                // No bloquear render: perfil en background
+                fetchOrCreateProfile().catch(() => {});
                 return;
             } else {
                 setUser(null);
@@ -113,7 +115,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(false);
         });
 
-        return () => unsubscribe();
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
     }, [pathname, router]);
 
     const logout = async () => {
@@ -128,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return (
         <AuthContext.Provider value={{ user, profile, loading, logout, firebaseConfigured }}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };
