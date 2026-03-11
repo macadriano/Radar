@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
-import { getFirestore, Firestore, enableNetwork } from "firebase/firestore";
+import { getFirestore, Firestore, enableNetwork, initializeFirestore } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -22,10 +22,14 @@ let storage: FirebaseStorage | null = null;
 if (hasValidConfig) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
-    db = getFirestore(app);
+    try {
+        db = initializeFirestore(app, { experimentalForceLongPolling: true });
+    } catch {
+        db = getFirestore(app);
+    }
     storage = getStorage(app);
     // Reducir error "client is offline": forzar uso de red al iniciar
-    enableNetwork(db).catch(() => {});
+    if (db) enableNetwork(db).catch(() => {});
 }
 
 export { app, auth, db, storage };

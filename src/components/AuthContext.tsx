@@ -7,6 +7,7 @@ import {
     signOut as firebaseSignOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { enableNetwork } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserProfile, UserRole } from '@/types/contractual';
@@ -48,6 +49,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (firebaseUser) {
                 setUser(firebaseUser);
 
+                // Forzar conexión a red antes de leer perfil (evita "client is offline" en producción)
+                try {
+                    await enableNetwork(dbInstance);
+                } catch (_) {}
+
                 const fetchOrCreateProfile = async (retryCount = 0): Promise<void> => {
                     const userDocRef = doc(dbInstance, 'users', firebaseUser.uid);
                     try {
@@ -85,8 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     } catch (error: unknown) {
                         const isOffline = error && typeof error === 'object' && 'message' in error &&
                             String((error as { message?: string }).message).toLowerCase().includes('offline');
-                        if (isOffline && retryCount < 2) {
-                            await new Promise(r => setTimeout(r, 800 + retryCount * 600));
+                        if (isOffline && retryCount < 5) {
+                            await new Promise(r => setTimeout(r, 1000 + retryCount * 500));
                             return fetchOrCreateProfile(retryCount + 1);
                         }
                         console.error('Error fetching/creating user profile:', error);
